@@ -6,15 +6,14 @@ import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Queue;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
@@ -33,6 +32,8 @@ public class Monitor implements IXposedHookLoadPackage {
 
     private static final String pkgFilePath = "/sdcard/pkg.txt";
     private static final String targetFilePath = "/sdcard/target.txt";
+
+    XSharedPreferences pre = new XSharedPreferences("com.tianchi.monidroid", "moni");
 
 
     private String getPkgName() {
@@ -57,12 +58,13 @@ public class Monitor implements IXposedHookLoadPackage {
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) throws Throwable {
-
         if (pkgName == null)
             pkgName = getPkgName();
 
         //find the target package
         if (pkgName != null && loadPackageParam.packageName.equals(pkgName)) {
+            pre.reload();
+            Log.v(LOG,"pre:"+pre.getString("count",""));
 
             final File targetFile = new File(targetFilePath);
             if (!targetFile.exists()) {
@@ -101,6 +103,8 @@ public class Monitor implements IXposedHookLoadPackage {
                         }
                         isStarting = true;
                     }
+                    pre.reload();
+                    Log.v(LOG,"pre:"+pre.getString("count",""));
                 }
             });
 
@@ -149,74 +153,6 @@ public class Monitor implements IXposedHookLoadPackage {
                         param.setResult(null);
                 }
             });
-
-            /**View listener hook
-             hook_methods("android.view.View", "setOnDragListener", new XC_MethodHook() {
-
-            @Override protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-            View v = (View) param.thisObject;
-            Rect rect = new Rect();
-            v.getLocalVisibleRect(rect);
-            String po_info = "r: " + rect.width() + " h: " + rect.height() + " left: " + rect.left + " top: " + rect.top;
-            Log.v(LOG, "setOnDragListener" + " " + po_info);
-            }
-            });
-
-             hook_methods("android.view.View", "setOnFocusChangeListener", new XC_MethodHook() {
-
-            @Override protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-            View v = (View) param.thisObject;
-            Rect rect = new Rect();
-            v.getLocalVisibleRect(rect);
-            String po_info = "r: " + rect.width() + " h: " + rect.height() + " left: " + rect.left + " top: " + rect.top;
-            Log.v(LOG, "setOnFocusChangeListener" + " " + po_info);
-            }
-            });
-
-
-             hook_methods("android.view.View", "setOnScrollChangeListener", new XC_MethodHook() {
-
-            @Override protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-            View v = (View) param.thisObject;
-            Rect rect = new Rect();
-            v.getLocalVisibleRect(rect);
-            String po_info = "r: " + rect.width() + " h: " + rect.height() + " left: " + rect.left + " top: " + rect.top;
-            Log.v(LOG, "setOnScrollChangeListener"+" "+po_info);
-            }
-            });
-
-             hook_methods("android.view.View", "setOnClickListener", new XC_MethodHook() {
-
-            @Override protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-            View v = (View) param.thisObject;
-            Rect rect = new Rect();
-            v.getLocalVisibleRect(rect);
-            String po_info = "w:" + rect.width() + " h:" + rect.height() + " left:" + rect.left + " top:" + rect.top+" x:"+rect.centerX()+" bottom:"+rect.bottom;
-            Log.v(LOG, "setOnClickListener"+" "+po_info);
-            int[] loc=new int[2];
-            v.getLocationOnScreen(loc);
-            Log.v(LOG, "setOnClickListener1"+" "+loc[0]+" "+loc[1]);
-            v.getLocationInWindow(loc);
-            Log.v(LOG, "setOnClickListener2"+" "+loc[0]+" "+loc[1]);
-            }
-            });
-
-             hook_methods("android.view.View", "setOnTouchListener", new XC_MethodHook() {
-
-            @Override protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-            View v = (View) param.thisObject;
-            Rect rect = new Rect();
-            v.getLocalVisibleRect(rect);
-            String po_info = "w:" + rect.width() + " h:" + rect.height() + " left:" + rect.left + " top:" + rect.top+" x:"+rect.centerX()+" bottom:"+rect.bottom;
-            Log.v(LOG, "setOnTouchListener"+" "+po_info);
-            int[] loc=new int[2];
-            v.getLocationOnScreen(loc);
-            Log.v(LOG, "setOnTouchListener"+" "+loc[0]+" "+loc[1]);
-            v.getLocationInWindow(loc);
-            Log.v(LOG, "setOnTouchListener"+" "+loc[0]+" "+loc[1]);
-            }
-            });
-             **/
 
         }
     }
