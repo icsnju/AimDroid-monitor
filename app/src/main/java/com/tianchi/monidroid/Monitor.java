@@ -4,10 +4,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.util.Log;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -22,139 +18,118 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
  * Created by Tianchi on 16/8/1.
  */
 public class Monitor implements IXposedHookLoadPackage {
-    public static String LOG = "Monitor_Log";
 
-    private String pkgName = null;
-    private Intent targetIntent = null;
-    private String targetName = null;
-    private boolean isBlock = false;
+    public final static String MY_PACKAGE="com.tianchi.monidroid";
+    public final static String SHARE_NAME="moni";
+    public final static String PACKAGE_NAME_KEY="pkgname";
+    public final static String BLOCK_KEY="block";
+    public final static String TARGET_KEY="target";
+    public final static String INTENT_KEY="intent";
+
+    public final static String LOG = "Monitor_Log";
+
     private boolean isStarting = true;
 
-    private static final String pkgFilePath = "/sdcard/pkg.txt";
-    private static final String targetFilePath = "/sdcard/target.txt";
 
-    XSharedPreferences pre = new XSharedPreferences("com.tianchi.monidroid", "moni");
-
-
-    private String getPkgName() {
-        String pkgName = null;
-        File pkgFile = new File(pkgFilePath);
-        if (!pkgFile.exists()) return null;
-
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(pkgFile));
-            for (String line; (line = br.readLine()) != null; ) {
-                if (line.length() > 0) {
-                    pkgName = line;
-                    break;
-                }
-            }
-            br.close();
-        } catch (IOException e) {
-            //Log.v(LOG, e.toString());
-        }
-        return pkgName;
-    }
+    private XSharedPreferences pre = new XSharedPreferences(MY_PACKAGE, SHARE_NAME);
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) throws Throwable {
-        if (pkgName == null)
-            pkgName = getPkgName();
 
+        //pre.reload();
+        //String pkgName = pre.getString(PACKAGE_NAME_KEY, "");
+        String pkgName="com.chuanwg.chuanwugong";
         //find the target package
-        if (pkgName != null && loadPackageParam.packageName.equals(pkgName)) {
-            pre.reload();
-            Log.v(LOG,"pre:"+pre.getString("count",""));
+        if (pkgName.length() <= 0 || !loadPackageParam.packageName.equals(pkgName))
+            return;
 
-            final File targetFile = new File(targetFilePath);
-            if (!targetFile.exists()) {
-                targetName = null;
-                targetIntent = null;
-            } else {
-                BufferedReader br = new BufferedReader(new FileReader(targetFile));
-                int i = 0;
-                for (String line; (line = br.readLine()) != null; ) {
+        //hook startActivity
+        hook_methods("android.app.Activity", "startActivityForResult", new XC_MethodHook() {
 
-                    if (line.length() > 0 && i == 0) {
-                        targetName = line;
-                    } else if (line.length() > 0 && i == 1) {
-                        targetIntent = IntentJsonConverter.jsonToIntent(line);
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                Object[] objs = param.args;
+                if (objs.length != 3) return;
+                if (objs[0] instanceof Intent) {
+                    Intent in = (Intent) objs[0];
+
+                    pre.reload();
+                    if (pre.getBoolean(BLOCK_KEY, false)) {
+                        //This activity is blocked
+                        Log.i(LOG, "#start#" + in.getComponent().getShortClassName() + "#" + IntentJsonConverter.intentToJson(in) + "#");
+                        param.setResult(null);
                     }
-                    i++;
+                    isStarting = true;
+                }
+            }
+        });
+
+
+        //hook create
+        hook_methods("android.app.Instrumentation", "callActivityOnCreate", new XC_MethodHook() {
+
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                Object[] objs = param.args;
+                if (objs.length != 2) return;
+                if (objs[0] instanceof Activity) {
+                    Activity a = (Activity) objs[0];
+                    Log.v(LOG, "#create#" + a.getLocalClassName() + "#");
+                }
+                isStarting = false;
+            }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                Object[] objs = param.args;
+                if (objs.length != 2) return;
+
+                //If it is starting another activity, do noting
+                if (isStarting)
+                    return;
+
+                pre.reload();
+                String targetName = pre.getString(TARGET_KEY, "");
+
+                //It is the first time to start this app
+                if (targetName.length() <= 0)
+                    return;
+
+                //It is blocked, I will do noting
+                Boolean isBlock=pre.getBoolean(BLOCK_KEY,false);
+                if(isBlock)
+                    return;
+
+                //It has a target activity
+                if (objs[0] instanceof Activity) {
+                    Activity a = (Activity) objs[0];
+
+                    if (!targetName.equals(a.getLocalClassName())) {
+                        String intentContent = pre.getString(INTENT_KEY, "");
+                        if (intentContent.length() > 0) {
+                            Intent targetIntent = IntentJsonConverter.jsonToIntent(intentContent);
+                            a.startActivity(targetIntent);
+                        } else {
+                            Log.v(LOG, "error intent length.");
+                        }
+                    }
                 }
             }
 
-            isBlock = false;
-            isStarting = true;
+        });
 
-            //hook startActivity
-            hook_methods("android.app.Activity", "startActivityForResult", new XC_MethodHook() {
+        //hook finish
+        hook_methods("android.app.Activity", "finish", new XC_MethodHook() {
 
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    Object[] objs = param.args;
-                    if (objs.length != 3) return;
-                    if (objs[0] instanceof Intent) {
-                        Intent in = (Intent) objs[0];
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                Log.v(LOG, "#finish#");
+                pre.reload();
+                if (pre.getBoolean(BLOCK_KEY, false))
+                    param.setResult(null);
+            }
+        });
 
-                        Log.i(LOG, "#start#" + in.getComponent().getShortClassName() + "#" + IntentJsonConverter.intentToJson(in) + "#");
-                        if (isBlock) {
-                            param.setResult(null);
-                        }
-                        isStarting = true;
-                    }
-                    pre.reload();
-                    Log.v(LOG,"pre:"+pre.getString("count",""));
-                }
-            });
-
-
-            //hook create
-            hook_methods("android.app.Instrumentation", "callActivityOnCreate", new XC_MethodHook() {
-
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    Object[] objs = param.args;
-                    if (objs.length != 2) return;
-                    if (objs[0] instanceof Activity) {
-                        Activity a = (Activity) objs[0];
-                        Log.v(LOG, "#create#" + a.getLocalClassName() + "#");
-                    }
-                    isStarting = false;
-                }
-
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    Object[] objs = param.args;
-                    if (objs.length != 2) return;
-                    if (objs[0] instanceof Activity) {
-                        Activity a = (Activity) objs[0];
-                        if (targetName != null && !targetName.equals(a.getLocalClassName()) && !isStarting) {
-                            a.startActivity(targetIntent);
-                        } else if (targetName == null && !isStarting) {
-                            targetName = a.getLocalClassName();
-                        }
-
-                        if (targetName != null && targetName.equals(a.getLocalClassName())) {
-                            isBlock = true;
-                        }
-                    }
-                }
-
-            });
-
-            //hook finish
-            hook_methods("android.app.Activity", "finish", new XC_MethodHook() {
-
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    Log.v(LOG, "#finish#");
-                    if (isBlock)
-                        param.setResult(null);
-                }
-            });
-
-        }
     }
 
 
