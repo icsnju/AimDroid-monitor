@@ -45,12 +45,12 @@ public class GuiderService extends Service {
                 BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 while (true) {
                     String guide = input.readLine();
-                    if(guide==null){
+                    if (guide == null) {
                         Log.v("Monitor.LOG", "Client closed socket");
                         return null;
                     }
                     if (guide.length() > 0) {
-                        String[] items = guide.split("#");
+                        String[] items = guide.split("@");
                         if (items.length != 2 && items.length != 1) {
                             Log.v(Monitor.LOG, "error read line " + guide + " " + items.length);
                             continue;
@@ -59,10 +59,10 @@ public class GuiderService extends Service {
                         if (items.length == 2)
                             second = items[1];
 
-                        Log.v("Monitor.LOG", "read line: " + guide+" "+items[0]);
+                        Log.v("Monitor.LOG", "read line: " + guide + " " + items[0]);
                         switch (items[0]) {
                             case Monitor.BLOCK_KEY:
-                                if (items[1].equals("true"))
+                                if (items.length == 2 && items[1].equals("true"))
                                     mEditor.putBoolean(Monitor.BLOCK_KEY, true);
                                 else
                                     mEditor.putBoolean(Monitor.BLOCK_KEY, false);
@@ -77,7 +77,7 @@ public class GuiderService extends Service {
                                 mEditor.putString(Monitor.TARGET_KEY, second);
                                 break;
                             default:
-                                Log.v(Monitor.LOG, "error guide");
+                                Log.v(Monitor.LOG, "error guide: " + items[0]);
                         }
                         mEditor.commit();
                     }
