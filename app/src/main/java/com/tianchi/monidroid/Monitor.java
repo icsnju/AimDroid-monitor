@@ -1,17 +1,15 @@
 package com.tianchi.monidroid;
 
 import android.app.Activity;
-import android.app.Instrumentation;
 import android.content.Intent;
 import android.graphics.Rect;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
@@ -35,7 +33,6 @@ public class Monitor implements IXposedHookLoadPackage {
     public final static String LOG = "Monitor_Log";
 
     private boolean isStarting = true;
-    private boolean wantRestart = false;
 
     private XSharedPreferences pre = new XSharedPreferences(MY_PACKAGE, SHARE_NAME);
 
@@ -64,24 +61,14 @@ public class Monitor implements IXposedHookLoadPackage {
 
                     pre.reload();
                     boolean isBlock = pre.getBoolean(BLOCK_KEY, false);
-
+                    String target = pre.getString(TARGET_KEY, "");
                     if (isBlock) {
-                        //This activity is blocked
-
-                        //I want to restart this activity, so do nothing
-                        if (wantRestart) {
-                            wantRestart = false;
+                        if (in.getComponent().getShortClassName().equals(target)) {
+                            Log.i(LOG, "It is target activity. Don't stop it.");
                             return;
                         }
-
+                        //This activity is blocked
                         Log.i(LOG, "@start@" + in.getComponent().getShortClassName() + "@" + in.toUri(0) + "@" + requestCode);
-                        //Log.i(LOG, "@fdsdfd@" + in.getComponent().getShortClassName() + "@" + in.toUri(Intent.URI_INTENT_SCHEME) + "@" + requestCode);
-
-                        //The target activity will be recreated
-                        Activity act = (Activity) param.thisObject;
-                        wantRestart = true;
-                        act.finish();
-                        act.startActivity(act.getIntent());
                         param.setResult(null);
                     } else {
                         Log.i(LOG, "It is not block. Let's start " + in.getComponent().getShortClassName());
@@ -152,7 +139,6 @@ public class Monitor implements IXposedHookLoadPackage {
                     }
                 }
             }
-
         });
 
         //hook finish
@@ -164,17 +150,11 @@ public class Monitor implements IXposedHookLoadPackage {
                 pre.reload();
 
                 if (pre.getBoolean(BLOCK_KEY, false)) {
-
-                    //I want to restart this activity, so just finish it
-                    if (wantRestart)
-                        return;
-
-                    //The target activity will be recreated
-                    Activity act = (Activity) param.thisObject;
-                    wantRestart = true;
-                    act.finish();
-                    act.startActivity(act.getIntent());
-                    param.setResult(null);
+                    String target = pre.getString(TARGET_KEY, "");
+                    Activity activity = (Activity) param.thisObject;
+                    //If you want to stop target activity, no way.
+                    if (activity.getLocalClassName().equals(target))
+                        param.setResult(null);
                 }
             }
         });
@@ -216,20 +196,24 @@ public class Monitor implements IXposedHookLoadPackage {
         }
     }
 
-    private void collectTapEvent(AccessibilityNodeInfo node) {
-        if(node==null)
+    private void collectTapEvent(View node) {
+        if (node == null)
             return;
 
         if (node.isClickable()) {
             Rect rect = new Rect();
-            node.getBoundsInScreen(rect);
-            Log.v(LOG, "@Tap@" + rect.exactCenterX() + "," + rect.exactCenterY() + "@");
+            node.getHitRect(rect);
+            Log.v(LOG, "@tap@" + rect.exactCenterX() + "," + rect.exactCenterY() + "@");
         }
-        int count = node.getChildCount();
-        for (int i = 0; i < count; i++) {
-            AccessibilityNodeInfo child = node.getChild(i);
-            if (child != null && child.isVisibleToUser()) {
-                collectTapEvent(child);
+
+        if (node instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) node;
+            int count = group.getChildCount();
+            for (int i = 0; i < count; i++) {
+                View child = group.getChildAt(i);
+                if (child != null && child.getVisibility() == View.VISIBLE) {
+                    collectTapEvent(child);
+                }
             }
         }
     }
