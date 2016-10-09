@@ -63,12 +63,20 @@ public class Monitor implements IXposedHookLoadPackage {
                     boolean isBlock = pre.getBoolean(BLOCK_KEY, false);
                     String target = pre.getString(TARGET_KEY, "");
                     if (isBlock) {
-                        if (in.getComponent().getShortClassName().equals(target)) {
-                            Log.i(LOG, "It is target activity. Don't stop it.");
-                            return;
+                        String className=null;
+                        if(in.getComponent()!=null&&in.getComponent().getShortClassName()!=null){
+                            className=in.getComponent().getShortClassName();
+                        }else{
+                            Log.i(LOG, "Intent err: "+in.toUri(0));
                         }
+
+//                        if (className!=null&&className.equals(target)) {
+//                            Log.i(LOG, "It is target activity. Don't stop it.");
+//                            return;
+//                        }
+
                         //This activity is blocked
-                        Log.i(LOG, "@start@" + in.getComponent().getShortClassName() + "@" + in.toUri(0) + "@" + requestCode);
+                        Log.i(LOG, "@start@" + className + "@" + in.toUri(0) + "@" + requestCode);
                         param.setResult(null);
                     } else {
                         Log.i(LOG, "It is not block. Let's start " + in.getComponent().getShortClassName());
@@ -87,7 +95,7 @@ public class Monitor implements IXposedHookLoadPackage {
                 if (objs.length != 2) return;
                 if (objs[0] instanceof Activity) {
                     Activity activity = (Activity) objs[0];
-                    Log.v(LOG, "@create@" + activity.getLocalClassName() + "@");
+                    //Log.v(LOG, "@create@" + activity.getLocalClassName() + "@");
                 }
                 isStarting = false;
             }
