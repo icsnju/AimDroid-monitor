@@ -46,8 +46,8 @@ public class GuiderService extends Service {
                 while (true) {
                     String guide = input.readLine();
                     if (guide == null) {
-                        Log.v("Monitor.LOG", "Client closed socket");
-                        return null;
+                        Log.v(Monitor.LOG, "Input string is null");
+                        continue;
                     }
                     if (guide.length() > 0) {
                         String[] items = guide.split("@");
@@ -59,27 +59,26 @@ public class GuiderService extends Service {
                         if (items.length == 2)
                             second = items[1];
 
-                        Log.v("Monitor.LOG", "read line: " + guide + " " + items[0]);
+                        Log.v(Monitor.LOG, "read line: " + guide + " " + items[0]);
                         switch (items[0]) {
                             case Monitor.BLOCK_KEY:
                                 if (items.length == 2 && items[1].equals("true"))
-                                    mEditor.putBoolean(Monitor.BLOCK_KEY, true);
+                                    mEditor.putBoolean(Monitor.BLOCK_KEY, true).commit();
                                 else
-                                    mEditor.putBoolean(Monitor.BLOCK_KEY, false);
+                                    mEditor.putBoolean(Monitor.BLOCK_KEY, false).commit();
                                 break;
                             case Monitor.INTENT_KEY:
-                                mEditor.putString(Monitor.INTENT_KEY, second);
+                                mEditor.putString(Monitor.INTENT_KEY, second).commit();
                                 break;
                             case Monitor.PACKAGE_NAME_KEY:
-                                mEditor.putString(Monitor.PACKAGE_NAME_KEY, second);
+                                mEditor.putString(Monitor.PACKAGE_NAME_KEY, second).commit();
                                 break;
                             case Monitor.TARGET_KEY:
-                                mEditor.putString(Monitor.TARGET_KEY, second);
+                                mEditor.putString(Monitor.TARGET_KEY, second).commit();
                                 break;
                             default:
                                 Log.v(Monitor.LOG, "error guide: " + items[0]);
                         }
-                        mEditor.commit();
                     }
                 }
 
@@ -114,5 +113,10 @@ public class GuiderService extends Service {
         public void startTask() {
             mTask.execute();
         }
+
+        public void stopTask() {
+            mTask.cancel(true);
+        }
     }
+
 }

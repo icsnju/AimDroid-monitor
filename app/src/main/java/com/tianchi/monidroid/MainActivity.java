@@ -11,12 +11,14 @@ import android.os.Bundle;
 
 public class MainActivity extends AppCompatActivity {
     String LOG = "Monitor_Log";
+    GuiderService.GuiderBinder yourBinder=null;
 
     //Create a ServiceConnection for starting a thread
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            ((GuiderService.GuiderBinder)service).startTask();
+            yourBinder=(GuiderService.GuiderBinder)service;
+            yourBinder.startTask();
         }
 
         @Override
@@ -38,6 +40,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onDestroy(){
         super.onDestroy();
+        if(yourBinder!=null){
+            yourBinder.stopTask();
+        }
         unbindService(serviceConnection);
     }
 }
