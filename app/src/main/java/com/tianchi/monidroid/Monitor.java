@@ -3,6 +3,7 @@ package com.tianchi.monidroid;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Rect;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -41,7 +42,16 @@ public class Monitor implements IXposedHookLoadPackage {
 
         //pre.reload();
         //String pkgName = pre.getString(PACKAGE_NAME_KEY, "");
-        String pkgName = "com.chuanwg.chuanwugong";
+        //String pkgName = "com.chuanwg.chuanwugong";
+        //String pkgName = "uk.co.yahoo.p1rpp.calendartrigger";
+        //String pkgName = "io.github.hidroh.materialistic";
+        //String pkgName = "subreddit.android.appstore";
+        //String pkgName = "de.j4velin.systemappmover";
+        //String pkgName = "org.zeroxlab.zeroxbenchmark";
+        //String pkgName = "com.uberspot.a2048";
+        String pkgName = "com.twobuntu.twobuntu";
+
+
         //find the target package
         if (pkgName.length() <= 0 || !loadPackageParam.packageName.equals(pkgName))
             return;
@@ -52,31 +62,38 @@ public class Monitor implements IXposedHookLoadPackage {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 Object[] objs = param.args;
-                if (objs.length != 3) return;
+                if (objs.length <3) return;
+
+                Intent in =null;
                 if (objs[0] instanceof Intent) {
-                    Intent in = (Intent) objs[0];
-                    int requestCode = (int) objs[1];
+                    in = (Intent) objs[0];
+                }else if(objs[1] instanceof Intent){
+                    in = (Intent) objs[1];
+                }
+
+                if (in !=null) {
+                    //Monkey
+//                    if (in.getComponent() != null && in.getComponent().getShortClassName() != null) {
+//                        Log.i(LOG, "@start@" + in.getComponent().getShortClassName() + "@" + in.toUri(0) + "@" + requestCode);
+//                    }
 
                     isStarting = true;
 
                     pre.reload();
                     boolean isBlock = pre.getBoolean(BLOCK_KEY, false);
-                    String target = pre.getString(TARGET_KEY, "");
                     if (isBlock) {
-                        String className = null;
                         if (in.getComponent() != null && in.getComponent().getShortClassName() != null) {
-                            className = in.getComponent().getShortClassName();
+                            String className = in.getComponent().getShortClassName();
                             //This activity is blocked
-                            Log.i(LOG, "@start@" + className + "@" + in.toUri(0) + "@" + requestCode);
+                            Log.i(LOG, "@start@" + className + "@" + in.toUri(0) + "@");
+                            param.setResult(null);
                         } else {
-                            Log.i(LOG, "Intent err: " + in.toUri(0));
+                            Log.i(LOG, "Intent out: " + in.toUri(0));
                         }
-
 //                        if (className!=null&&className.equals(target)) {
 //                            Log.i(LOG, "It is target activity. Don't stop it.");
 //                            return;
 //                        }
-                        param.setResult(null);
                     } else {
                         Log.i(LOG, "It is not block. Let's start " + in.getComponent().getShortClassName());
                     }
@@ -119,21 +136,15 @@ public class Monitor implements IXposedHookLoadPackage {
                 //It is the first time to start this app
                 if (targetName.length() <= 0) {
                     Log.v(LOG, "It is the first time to start this app");
-                    if (a != null && a.getWindow() != null && a.getWindow().getDecorView() != null) {
-                        a.getWindow().getDecorView().addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
-                            @Override
-                            public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
-                                Log.i(LOG, "@change@");
-                            }
-                        });
-                    }
                     return;
                 }
 
                 //It is blocked, I will do noting
                 Boolean isBlock = pre.getBoolean(BLOCK_KEY, false);
                 if (isBlock) {
-                    Log.v(LOG, "It is blocked, I will do noting");
+                    if(a!=null) {
+                        Log.v(LOG, "It is blocked, I will do noting. Start " + a.getLocalClassName());
+                    }
                     return;
                 }
 
@@ -147,15 +158,6 @@ public class Monitor implements IXposedHookLoadPackage {
                         a.startActivity(targetIntent);
                     } else {
                         Log.v(LOG, "error intent length.");
-                    }
-                } else if (a != null && targetName.equals(a.getLocalClassName())) {
-                    if (a.getWindow() != null && a.getWindow().getDecorView() != null) {
-                        a.getWindow().getDecorView().addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
-                            @Override
-                            public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
-                                Log.i(LOG, "@change@");
-                            }
-                        });
                     }
                 }
             }

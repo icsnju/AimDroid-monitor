@@ -46,7 +46,7 @@ public class GuiderService extends Service {
                 while (true) {
                     String guide = input.readLine();
                     if (guide == null) {
-                        Log.v(Monitor.LOG, "Input string is null");
+                        //Log.v(Monitor.LOG, "Input string is null");
                         continue;
                     }
                     if (guide.length() > 0) {
