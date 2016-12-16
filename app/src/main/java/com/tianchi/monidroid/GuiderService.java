@@ -59,7 +59,7 @@ public class GuiderService extends Service {
                         if (items.length == 2)
                             second = items[1];
 
-                        Log.v(Monitor.LOG, "read line: " + guide + " " + items[0]);
+                        Log.v(Monitor.LOG, "read line: " + guide);
                         switch (items[0]) {
                             case Monitor.BLOCK_KEY:
                                 if (items.length == 2 && items[1].equals("true"))
@@ -75,6 +75,9 @@ public class GuiderService extends Service {
                                 break;
                             case Monitor.TARGET_KEY:
                                 mEditor.putString(Monitor.TARGET_KEY, second).commit();
+                                break;
+                            case Monitor.CHILD_KEY:
+                                mEditor.putString(Monitor.CHILD_KEY, second).commit();
                                 break;
                             default:
                                 Log.v(Monitor.LOG, "error guide: " + items[0]);
