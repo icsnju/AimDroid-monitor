@@ -73,10 +73,6 @@ public class Monitor implements IXposedHookLoadPackage {
                 }
 
                 if (in != null) {
-                    //Monkey
-//                    if (in.getComponent() != null && in.getComponent().getShortClassName() != null) {
-//                        Log.i(LOG, "@start@" + in.getComponent().getShortClassName() + "@" + in.toUri(0) + "@");
-//                    }
 
                     isStarting = true;
 
@@ -104,7 +100,10 @@ public class Monitor implements IXposedHookLoadPackage {
 //                            return;
 //                        }
                     } else {
-                        Log.i(LOG, "It is not block. Let's start " + in.getComponent().getShortClassName());
+                        //Monkey
+                        if (in.getComponent() != null && in.getComponent().getShortClassName() != null) {
+                            Log.i(LOG, "@start@" + in.getComponent().getShortClassName() + "@" + in.toUri(0) + "@");
+                        }
                     }
                 }
 
